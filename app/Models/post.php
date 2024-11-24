@@ -2,44 +2,47 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Arr;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class post
+class Post extends Model
+{
+    use HasFactory;
+    protected $fillable = ['title', 'author', 'slug', 'body'];
+
+    protected $with = ['author', 'category'];
+
+    public function author(): BelongsTo
     {
-        public static function all()
-        {
-            return  [
-                [
-                    'id' => 1,
-                    'slug' => 'judul-artikel-1',
-                    'title' => 'Judul Artikel 1',
-                    'author' => 'Angga Nugraha Sofyan',
-                    'body' => 'Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat placeat modi eos facere. Quam excepturi tempore mollitia velit, iste impedit aperiam quibusdam consequatur. Eveniet, molestiae?' 
-                ],
-                [
-                    'id' => 2,
-                    'slug' => 'judul-artikel-2',
-                    'title' => 'Judul Artikel 2',
-                    'author' => 'Angga Nugraha Sofyan',
-                    'body' => 'Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat placeat modi eos facere. Quam excepturi tempore mollitia velit, iste impedit aperiam quibusdam consequatur. Eveniet, molestiae?' 
-                ]
+        return $this->belongsTo(User::class);
+    }
 
-                ];
-        }
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
 
+    public function scopeFilter(Builder $query, array $filters): void
+    {
+        $query->when($filters['search'] ?? false,
+         fn($query, $search)  =>
 
-        public static function find($slug): array
-        {
+            $query->where('title', 'like', '%' . $search . '%')            
+        );
 
-           $post =  Arr::first(static::all(), fn ($post) => $post['slug'] == $slug);
-           
-           if(! $post){
-                abort(404);
-           }
-
-           return $post;
+        $query->when($filters['category'] ?? false,
+        fn($query, $category) =>
+        $query->whereHas('category', fn($query)=> $query->where('slug', $category))
+    );
 
 
-            }
-        }
-    ?>
+    $query->when($filters['aythor'] ?? false,
+    fn($query, $author) =>
+    $query->whereHas('author', fn($query)=> $query->where('username', $author))
+);
+
+
+    }
+}
